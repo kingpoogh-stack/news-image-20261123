@@ -1,8 +1,10 @@
 """Entry point for news-image-20261123.
 
-Copies the committed front-page asset to the output location.
-Pure Python 3 standard library only; no network, no third-party packages.
-Deterministic: the same asset always produces byte-identical output.
+Copies the committed front-page asset (assets/final-page.png) to
+entry.png in the output directory. Pure Python 3 standard library
+only; no network, no third-party packages. Deterministic: the same
+asset always produces byte-identical output, from any working
+directory.
 """
 
 import os
