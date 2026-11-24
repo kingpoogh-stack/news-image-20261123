@@ -1,4 +1,4 @@
-"""Build-time renderer for the v3 front page of THE WORLD TODAY.
+"""Build-time renderer for the v4 front page of THE WORLD TODAY.
 
 Composes a realistic broadsheet newspaper front page for Monday,
 23 November 2026 and writes it to assets/final-page.png. The page is
@@ -7,13 +7,20 @@ the type and the press-style illustration panels a smoother, printed
 finish. Pillow is used only here, on the build machine; the shipped
 entry point (main.py) is pure standard library.
 
+v4 changes over v3: the lead headline runs on one line so the COP31
+plenary panel can stand more than twice as tall — a proper hall scene
+with a big screen and two rows of delegates' desks, so the day's lead
+story reads at a glance. The US House story gains a Capitol panel of
+its own, and the Riemann claim moves to the World in Brief strip,
+where the Hong Kong brief (already covered by the markets story) was.
+
 Layout, top to bottom:
   folio line and masthead, markets ticker, "Inside today" strip,
   the COP31 lead (headline, deck, plenary-hall panel with caption and
   credit, body columns with a pull-quote rail), a three-column row
   (markets rout, Dymer strike, Shenzhen declaration), a second
-  three-column row (Hormuz tankers, US House + Riemann claim, Sport),
-  a markets-at-a-glance and weather band, and a World in Brief strip.
+  three-column row (Hormuz tankers, US House, Sport), a markets-at-a-
+  glance and weather band, and a World in Brief strip.
 """
 
 import random
@@ -134,34 +141,56 @@ def kicker(x, y, s, fill=RED):
 # ---------------------------------------------------------------- panels
 
 def plenary_panel(x, y, w, h):
-    """COP31 plenary hall in Antalya after the walkout."""
+    """COP31 plenary hall in Antalya after the walkout: a big screen
+    over two rows of delegates' desks, several chairs pointedly empty."""
     panel(x, y, w, h)
-    rect(x + 1, y + 1, w - 2, h - 26, fill=(38, 58, 82))            # hall wall
-    rect(x + 1, y + h - 27, w - 2, 26, fill=(104, 88, 66))          # stage floor
-    rect(x + 14, y + 10, 46, 24, fill=(146, 44, 36))                # side screens
-    rect(x + w - 60, y + 10, 46, 24, fill=(52, 96, 62))
-    rect(x + 14, y + 10, 46, 24, outline=(220, 214, 198), width=1)
-    rect(x + w - 60, y + 10, 46, 24, outline=(220, 214, 198), width=1)
-    for sx in (x + 14, x + w - 60):  # faint agenda lines on the screens
+    for i in range(10):  # hall wall, shaded in bands toward the floor
+        shade = (40 + i * 2, 58 + i * 2, 82 + i)
+        rect(x + 1, y + 1 + i * (h - 2) / 10, w - 2, (h - 2) / 10 + 1,
+             fill=shade)
+    rect(x + 1, y + h - 15, w - 2, 14, fill=(104, 88, 66))          # stage floor
+    # side screens with faint agenda lines
+    for sx, col in ((x + 16, (146, 44, 36)), (x + w - 76, (52, 96, 62))):
+        rect(sx, y + 10, 60, 26, fill=col, outline=(220, 214, 198), width=1)
         for li in range(3):
-            line(sx + 7, y + 17 + li * 5, sx + 39, y + 17 + li * 5,
+            line(sx + 8, y + 17 + li * 5, sx + 52, y + 17 + li * 5,
                  fill=(226, 220, 204, 130), width=1)
-    text(x + w / 2, y + 9, "COP31  ·  ANTALYA", F(SANS_B, 15),
-         (232, 226, 208), anchor="ma")
-    ty = y + h - 34                                                 # delegates' table
-    rect(x + 26, ty, w - 52, 7, fill=(74, 56, 40))
-    rect(x + 26, ty + 7, w - 52, 3, fill=(52, 40, 28))
-    seats = 11
-    for i in range(seats):  # some seats filled, several pointedly empty
-        cx = x + 76 + i * (w - 152) / (seats - 1)
-        if i in (2, 5, 8):
-            rect(cx - 6, ty - 12, 12, 12, outline=(214, 206, 188), width=1)
-            continue
-        d.ellipse([X(cx - 4.5), X(ty - 21), X(cx + 4.5), X(ty - 12)],
-                  fill=(16, 15, 14))
-        d.pieslice([X(cx - 8), X(ty - 13), X(cx + 8), X(ty + 3)],
-                   180, 360, fill=(16, 15, 14))
-        line(cx, ty - 26, cx, ty - 21, fill=(214, 206, 188), width=1)
+    # the big screen: summit name, a globe ring, the day's agenda
+    sw, sh = 300, 42
+    sx0, sy0 = x + (w - sw) / 2, y + 8
+    rect(sx0, sy0, sw, sh, fill=(24, 38, 56), outline=(220, 214, 198),
+         width=1)
+    d.ellipse([X(sx0 + 18), X(sy0 + 7), X(sx0 + 50), X(sy0 + 35)],
+              outline=(150, 190, 220), width=2)
+    d.ellipse([X(sx0 + 28), X(sy0 + 7), X(sx0 + 40), X(sy0 + 35)],
+              outline=(150, 190, 220), width=1)
+    line(sx0 + 18, sy0 + 21, sx0 + 50, sy0 + 21, fill=(150, 190, 220),
+         width=1)
+    text(sx0 + 64, sy0 + 5, "COP31  ·  ANTALYA", F(SANS_B, 16),
+         (236, 230, 212))
+    text(sx0 + 64, sy0 + 25, "PLENARY  ·  FINAL SESSION", F(SANS, 9.5),
+         (178, 190, 204))
+    for li in range(3):
+        line(sx0 + 224, sy0 + 10 + li * 10, sx0 + 284, sy0 + 10 + li * 10,
+             fill=(226, 220, 204, 110), width=2)
+
+    def desk_row(ty, seats, empties, span):
+        rect(x + (w - span) / 2, ty, span, 6, fill=(74, 56, 40))
+        rect(x + (w - span) / 2, ty + 6, span, 3, fill=(52, 40, 28))
+        for i in range(seats):
+            cx = x + (w - span) / 2 + 30 + i * (span - 60) / (seats - 1)
+            if i in empties:  # an empty chair: pale outline, no delegate
+                rect(cx - 6, ty - 11, 12, 11, outline=(214, 206, 188),
+                     width=1)
+                continue
+            d.ellipse([X(cx - 4.5), X(ty - 20), X(cx + 4.5), X(ty - 11)],
+                      fill=(16, 15, 14))
+            d.pieslice([X(cx - 8), X(ty - 12), X(cx + 8), X(ty + 4)],
+                       180, 360, fill=(16, 15, 14))
+            line(cx, ty - 23, cx, ty - 20, fill=(214, 206, 188), width=1)
+
+    desk_row(y + h - 38, 13, (3, 9), w - 190)      # back row, raised
+    desk_row(y + h - 14, 15, (2, 6, 10, 13), w - 60)  # front row
     grain(x, y, w, h, seed=31)
     rect(x, y, w, h, outline=RULE, width=1)
 
@@ -270,6 +299,34 @@ def tanker_panel(x, y, w, h):
     rect(x, y, w, h, outline=RULE, width=1)
 
 
+def capitol_panel(x, y, w, h):
+    """The US Capitol at dusk: dome, colonnade and steps in silhouette."""
+    panel(x, y, w, h)
+    for i in range(6):  # dusk sky, paler toward the horizon
+        shade = (96 + i * 9, 104 + i * 9, 122 + i * 8)
+        rect(x + 1, y + 1 + i * (h - 2) / 6, w - 2, (h - 2) / 6 + 1,
+             fill=shade)
+    rect(x + 1, y + h - 6, w - 2, 5, fill=(52, 52, 58))             # plaza
+    cx = x + w / 2
+    bw = w * 0.62                                                   # building width
+    bx = cx - bw / 2
+    by = y + h - 12                                                 # building base
+    rect(bx, by - 13, bw, 13, fill=(38, 40, 48))                    # main block
+    for i in range(9):                                              # colonnade
+        lx = bx + 8 + i * (bw - 16) / 8
+        line(lx, by - 12, lx, by - 2, fill=(196, 198, 204), width=1)
+    rect(bx - 6, by - 15, bw + 12, 2.5, fill=(30, 32, 40))          # entablature
+    d.pieslice([X(cx - 21), X(by - 40), X(cx + 21), X(by - 8)],
+               180, 360, fill=(44, 47, 56))                         # the dome
+    rect(cx - 21, by - 16, 42, 2, fill=(30, 32, 40))
+    rect(cx - 4, by - 45, 8, 6, fill=(44, 47, 56))                  # lantern
+    line(cx, by - 45, cx, by - 49, fill=(24, 25, 30), width=1.5)    # statue spike
+    for sx in (x + w * 0.10, x + w * 0.86):                         # side wings
+        rect(sx, by - 9, w * 0.13, 9, fill=(40, 42, 50))
+    grain(x, y, w, h, seed=23, n=110, alpha=10)
+    rect(x, y, w, h, outline=RULE, width=1)
+
+
 # ---------------------------------------------------------------- page
 
 M = 28                 # page margin
@@ -335,19 +392,19 @@ line(M, 148, W - M, 148, width=1)
 kicker(M, 156, "COP31  ·  ANTALYA, TÜRKIYE  ·  CLIMATE")
 text(W - M, 156, "FIRST FAILURE OF UN TALKS SINCE 2009", F(SANS_B, 10.5),
      SOFT, anchor="ra")
-text(W / 2, 170, "CLIMATE TALKS COLLAPSE", F(SERIF_B, 41), INK, anchor="ma")
-text(W / 2, 214, "IN ANTALYA", F(SERIF_B, 41), INK, anchor="ma")
-flow(M + 60, 260,
+text(W / 2, 168, "CLIMATE TALKS COLLAPSE IN ANTALYA", F(SERIF_B, 40),
+     INK, anchor="ma")
+flow(M + 60, 222,
      "UN summit ends after two days of overtime with no agreement, as about "
      "130 parties reject a draft text that never once mentions fossil fuels",
      F(SERIF_I, 14), CW - 120, 18, SOFT, align="center")
 
-plenary_panel(M, 302, CW, 78)
-caption(M, 384, CW,
+plenary_panel(M, 264, CW, 112)
+caption(M, 380, CW,
         "Empty chairs in the plenary hall in Antalya after delegations walked out on Sunday night.",
         "Illustration: Staff  ·  Reporting: Antalya")
 
-text(M, 402, "By the Climate Desk", F(SERIF_BI, 11.5), INK)
+text(M, 398, "By the Climate Desk", F(SERIF_BI, 11.5), INK)
 LEAD_A = ("ANTALYA — The COP31 climate summit collapsed on Sunday night "
           "after two days of overtime, the first failure of the UN climate "
           "talks since 2009. The European Union and about 130 parties "
@@ -357,17 +414,17 @@ LEAD_B = ("Talks also broke down over climate finance for poorer nations. "
           "Delegates said the draft offered no path at all on phasing out "
           "oil, gas and coal, and no new date was set to meet again. "
           "Negotiators left Antalya with no agreement and no timetable.")
-flow(M, 420, LEAD_A, F(SERIF, 11.5), COLW, 14.5)
-vrule(COL2 - GUT / 2, 420, 502)
-flow(COL2, 420, LEAD_B, F(SERIF, 11.5), COLW, 14.5)
-vrule(COL3 - GUT / 2, 420, 502)
-rect(COL3, 420, COLW, 84, fill=PAPER_DARK, outline=RULE, width=1)
-text(COL3 + 13, 427, "“", F(SERIF_B, 28), RED)
-flow(COL3 + 33, 432,
+flow(M, 416, LEAD_A, F(SERIF, 11.5), COLW, 14.5)
+vrule(COL2 - GUT / 2, 416, 500)
+flow(COL2, 416, LEAD_B, F(SERIF, 11.5), COLW, 14.5)
+vrule(COL3 - GUT / 2, 416, 500)
+rect(COL3, 416, COLW, 84, fill=PAPER_DARK, outline=RULE, width=1)
+text(COL3 + 13, 423, "“", F(SERIF_B, 28), RED)
+flow(COL3 + 33, 428,
      "We came to Antalya to phase out fossil fuels. The words were taken "
      "out — and then the talks fell apart.",
      F(SERIF_BI, 12.5), COLW - 47, 15.5)
-text(COL3 + 33, 484, "— A European negotiator, Sunday night",
+text(COL3 + 33, 480, "— A European negotiator, Sunday night",
      F(SANS_I, 9.5), SOFT)
 line(M, 512, W - M, 512, width=1.5)
 
@@ -409,7 +466,7 @@ flow(COL3, y + 2,
 line(M, RA + 188, W - M, RA + 188, width=1.5)
 
 # --- row B: hormuz / united states + science / sport -------------------------
-RB = RA + 196  # 730
+RB = RA + 194  # 714
 kicker(M, RB, "MIDDLE EAST")
 tanker_panel(M, RB + 14, COLW, 40)
 caption(M, RB + 57, COLW, "A tanker ablaze near the strait.", "Agencies")
@@ -422,19 +479,13 @@ flow(M, y + 2,
 
 vrule(COL2 - GUT / 2, RB, RB + 172)
 kicker(COL2, RB, "UNITED STATES")
-y = flow(COL2, RB + 16, "DEMOCRATS WIN BIGGEST HOUSE MAJORITY SINCE 1992",
+capitol_panel(COL2, RB + 14, COLW, 40)
+caption(COL2, RB + 57, COLW, "The Capitol in Washington at dusk.", "Staff")
+y = flow(COL2, RB + 74, "DEMOCRATS WIN BIGGEST HOUSE MAJORITY SINCE 1992",
          F(SERIF_B, 17.5), COLW, 20)
 flow(COL2, y + 2,
      "Democrats clinched at least 258 House seats after a recount in "
      "North Carolina — their largest majority since 1992.",
-     F(SERIF, 11), COLW, 13.5)
-line(COL2, RB + 94, COL2 + COLW, RB + 94, fill=FAINT, width=1)
-kicker(COL2, RB + 100, "SCIENCE", fill=NAVY)
-y = flow(COL2, RB + 116, "RIEMANN PROOF CLAIMED",
-         F(SERIF_B, 15.5), COLW, 19)
-flow(COL2, y + 2,
-     "Levent Alpöge, working with Claude, claimed a proof of the Riemann "
-     "Hypothesis, unsolved for over 160 years. Experts are checking it.",
      F(SERIF, 11), COLW, 13.5)
 
 rect(COL3, RB, COLW, 172, outline=RULE, width=1.2)                    # sport box
@@ -494,8 +545,8 @@ BRIEFS = [
                     "education minister quit over AI exam cheating."),
     ("BAHRAIN", "Strikes were reported on Bahrain as Hormuz tensions "
                 "spread across the Gulf."),
-    ("HONG KONG", "Shares hit a 19-month low as the AI sell-off deepened "
-                  "across Asia."),
+    ("SCIENCE", "Levent Alpöge, working with Claude, claimed a proof of "
+                "the Riemann Hypothesis, unsolved for over 160 years."),
 ]
 for i, (head, body) in enumerate(BRIEFS):
     bx = M + (i % 3) * (COLW + GUT)
